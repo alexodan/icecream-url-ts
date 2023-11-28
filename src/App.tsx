@@ -10,9 +10,9 @@ import "./App.css";
 // clean up!
 
 type FormValues = {
-  base: string[] | string;
-  flavor: string[] | string;
-  toppings: string[] | string;
+  base: string[] | undefined;
+  flavor: string[] | undefined;
+  toppings: string[] | undefined;
 };
 
 type FormKey = keyof FormValues;
@@ -21,9 +21,9 @@ type FormKey = keyof FormValues;
 // with url params
 export default function App() {
   const [formValues, setFormValues] = useState<FormValues>({
-    base: "",
-    flavor: "",
-    toppings: "",
+    base: undefined,
+    flavor: undefined,
+    toppings: undefined,
   });
 
   useEffect(() => {
@@ -31,19 +31,21 @@ export default function App() {
     // type key checking if it's a radio, checkbox, etc.
     // great fit for zod
     for (const [key, value] of url.entries()) {
+      const formKey = key as FormKey;
       setFormValues((prev) => ({
         ...prev,
-        [key]:
-          prev[key] && prev[key] !== value
-            ? [
-                ...new Set(
-                  [
-                    Array.isArray(prev[key]) ? [...prev[key]] : prev[key],
-                    value,
-                  ].flat()
-                ),
-              ]
-            : value,
+        [key]: prev[formKey]
+          ? [
+              ...new Set(
+                [
+                  Array.isArray(prev[formKey])
+                    ? [...(prev[formKey] ?? [])]
+                    : prev[formKey],
+                  value,
+                ].flat()
+              ),
+            ]
+          : value,
       }));
     }
   }, []);
@@ -63,19 +65,21 @@ export default function App() {
     const currentSearch = window.location.search;
     const url = new URLSearchParams(currentSearch);
     const { name, value } = e.target;
+    const formKey = name as FormKey;
     if (e.target.checked) {
       url.append(e.currentTarget.name, e.currentTarget.value);
       setFormValues((prev) => ({
         ...prev,
-        [name]: Array.isArray(prev[name as FormKey])
-          ? [...prev[name], value]
+        [name]: Array.isArray(prev[formKey])
+          ? [...(prev[formKey] ?? []), value]
           : [value],
       }));
     } else {
+      console.log("here", formValues[name as FormKey]);
       url.delete(name, value);
       setFormValues((prev) => ({
         ...prev,
-        [name]: prev[name as FormKey].filter((val) => val !== value),
+        [name]: (prev[name as FormKey] ?? []).filter((val) => val !== value),
       }));
     }
     window.history.pushState(null, "", `?${url.toString()}`);
@@ -86,15 +90,27 @@ export default function App() {
       <h1>Icecream order</h1>
 
       <form>
+        {Object.entries(formValues).map(([key, value]) => {
+          console.log(key, value);
+          const formKey = key as FormKey;
+          return (
+            <fieldset>
+              <legend>{key}</legend>
+              {value?.map((val) => (
+                <FieldCheckbox
+                  onChange={handleCheckboxChange}
+                  checked={formValues[formKey]?.includes(val)}
+                  name={key}
+                  value={val}
+                  label={val}
+                />
+              ))}
+            </fieldset>
+          );
+        })}
         <fieldset>
           <legend>Base</legend>
-          <FieldRadio
-            onChange={handleRadioChange}
-            name="base"
-            value="cone"
-            label="Cone"
-            checked={formValues["base"] === "cone"}
-          />
+
           <FieldRadio
             onChange={handleRadioChange}
             name="base"
